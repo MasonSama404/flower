@@ -102,7 +102,7 @@
       const canvas=document.getElementById('roseCanvas'),ctx=canvas.getContext('2d',{alpha:false});
       const progressFill=document.getElementById('progressFill'),progressText=document.getElementById('progressText'),restart=document.getElementById('restart');
       const scenes=[...document.querySelectorAll('.scene')],reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let width=0,height=0,dpr=1,center={x:0,y:0},scale=1,scrollProgress=0,smoothProgress=0,petals=[],stars=[],sparks=[],lastActive=0,lastTime=performance.now();
+      let width=0,height=0,dpr=1,center={x:0,y:0},scale=1,scrollProgress=0,smoothProgress=0,petals=[],stars=[],sparks=[],meteors=[],lastActive=0,lastTime=performance.now();
       const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),mix=(a,b,t)=>a+(b-a)*t,ease=t=>1-Math.pow(1-clamp(t,0,1),3),smoothstep=t=>{t=clamp(t,0,1);return t*t*(3-2*t)},rand=(a,b)=>a+Math.random()*(b-a);
 
       function resize(){
@@ -111,7 +111,7 @@
       }
 
       function buildRose(){
-        petals=[];stars=[];sparks=[];
+        petals=[];stars=[];sparks=[];meteors=[];
         const rings=[
           {count:6,start:7,len:48,width:27,lift:30,hue:350,delay:.04},
           {count:9,start:22,len:70,width:39,lift:23,hue:347,delay:.17},
@@ -132,6 +132,7 @@
         for(let i=0;i<115;i++){const angle=rand(0,Math.PI*2),radius=Math.pow(Math.random(),1.65)*29*scale;petals.push({tx:Math.cos(angle)*radius,ty:rand(-14,11)*scale,tz:Math.sin(angle)*radius,theta:angle,ring:-1,hue:rand(39,53),light:rand(66,87),alpha:rand(.45,1),size:rand(.65,1.8)*scale,delay:rand(.22,.44),phase:rand(0,Math.PI*2)});}
         const starCount=Math.round(clamp(width*height/11000,55,135));for(let i=0;i<starCount;i++)stars.push({x:Math.random()*width,y:Math.random()*height,r:rand(.2,1),a:rand(.05,.34),phase:rand(0,7)});
         for(let i=0;i<72;i++)sparks.push({angle:rand(0,Math.PI*2),radius:rand(150,285)*scale,y:rand(-110,110)*scale,speed:rand(-.12,.12),a:rand(.08,.4),size:rand(.3,1.15),phase:rand(0,7)});
+        for(let i=0;i<6;i++)meteors.push({x:rand(width*.55,width*1.2),y:rand(-height*.12,height*.42),length:rand(80,165),duration:rand(.85,1.35),interval:rand(8,15),delay:rand(0,15),brightness:rand(.38,.78)});
       }
 
       function updateScroll(){
@@ -142,6 +143,13 @@
       function drawBackground(t){
         const open=smoothstep((smoothProgress-.08)/.78),glow=ctx.createRadialGradient(center.x,center.y,0,center.x,center.y,Math.max(width,height)*.78);glow.addColorStop(0,`hsl(${mix(350,342,open)} 28% ${mix(10,13,open)}%)`);glow.addColorStop(.42,'#0b0810');glow.addColorStop(1,'#05050a');ctx.fillStyle=glow;ctx.fillRect(0,0,width,height);
         ctx.save();stars.forEach(s=>{ctx.globalAlpha=s.a*(.58+.42*Math.sin(t*.75+s.phase));ctx.fillStyle='#f6dfe7';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()});ctx.restore();
+        if(!reducedMotion)drawMeteors(t);
+      }
+
+      function drawMeteors(t){
+        ctx.save();ctx.lineCap='round';ctx.globalCompositeOperation='lighter';
+        meteors.forEach(m=>{const phase=(t+m.delay)%m.interval;if(phase>m.duration)return;const p=phase/m.duration,fade=Math.sin(Math.PI*p),x=m.x-p*(width*.72+m.length),y=m.y+p*height*.46,tailX=x+m.length,tailY=y-m.length*.52,trail=ctx.createLinearGradient(x,y,tailX,tailY);trail.addColorStop(0,`rgba(255,240,246,${m.brightness*fade})`);trail.addColorStop(.12,`rgba(255,135,164,${m.brightness*.62*fade})`);trail.addColorStop(1,'rgba(255,91,126,0)');ctx.strokeStyle=trail;ctx.lineWidth=rand(.65,1.15);ctx.shadowColor='#ff8ca5';ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(tailX,tailY);ctx.stroke();ctx.globalAlpha=fade*m.brightness;ctx.fillStyle='#fff8fa';ctx.beginPath();ctx.arc(x,y,1.1,0,Math.PI*2);ctx.fill()});
+        ctx.restore();
       }
 
       function drawStem(t,bloom){
